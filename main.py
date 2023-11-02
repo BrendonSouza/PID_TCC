@@ -32,8 +32,8 @@ teta = []
 tempos = []
 
 Kp = 3  # Ganho proporcional
-Ki = 0.1  # Ganho integral
-Kd = 0.2  # Ganho derivativo
+Ki = 0.16  # Ganho integral
+Kd = 4.96  # Ganho derivativo
 
 # Variáveis para armazenar valores anteriores e somas do erro para o cálculo integral
 integral = 0
@@ -51,19 +51,22 @@ def pid_control(erro, delta_time):
   # Componente proporcional
   proporcional = Kp * erro
 
-  # Componente integral
-  integral += erro * delta_time
-  integral = max(min(integral, 100), -100)  # Prevenir o acúmulo excessivo do integral (windup)
+  if erro == 0:
+    integral = 0
+  else:
+    integral = integral *erro
+
+
   integrativo = Ki * integral
 
   # Componente derivativo
-  derivativo = Kd * (erro - ultimo_erro) / delta_time
+  derivativo = Kd * (erro - ultimo_erro)
 
   # Atualiza o erro anterior para a próxima iteração
   ultimo_erro = erro
 
   # Saída do PID
-  output = proporcional + integrativo + derivativo
+  output = (proporcional + integrativo + derivativo) 
   return output
 
 
@@ -72,13 +75,13 @@ def thread_calculo():
   start = time.time()
   while robot.distance() < 1000:
     
-    Pe = Pe + Ne #Calcula total de rotações da roda esquerda
-    Pd = Pd + Nd #Calcula total de rotações da roda direita
-    Ne = left_motor.angle() - Pe #calcula a última rotação da roda esquerda
-    Nd = right_motor.angle() - Pd #calcula a última rotação da roda direita
-    teta.append(teta[-1] + (2*math.pi * ((Ne * raio) - (Nd * raio))/(360*entre_eixos))) #cálculo de teta
-    X.append(X[-1] + (math.pi * ((Ne * raio) + (Nd * raio))/360  * math.cos(teta[-1]))) #cálculo de X
-    Y.append(Y[-1] + (math.pi * ((Ne * raio) + (Nd * raio))/360  * math.sin(teta[-1]))) #cálculo de Y\
+    Pe = Pe + Ne
+    Pd = Pd + Nd 
+    Ne = left_motor.angle() - Pe 
+    Nd = right_motor.angle() - Pd 
+    teta.append(teta[-1] + (2*math.pi * ((Ne * raio) - (Nd * raio))/(360*entre_eixos))) 
+    X.append(X[-1] + (math.pi * ((Ne * raio) + (Nd * raio))/360  * math.cos(teta[-1]))) 
+    Y.append(Y[-1] + (math.pi * ((Ne * raio) + (Nd * raio))/360  * math.sin(teta[-1]))) 
     dados_Odo.append({'X': X[-1], 'Y': Y[-1], 'teta': teta[-1], 'tempo': time.time() - start})
     ev3.screen.print("X: ",X[-1])
     ev3.screen.print("Y: ",Y[-1])
@@ -89,7 +92,6 @@ teta.append(0)
 X.append(0)
 Y.append(0)
 def move(alvo):
-  robot.reset()
   cont = 0
   ultimo_tempo = time.time()
   global Pe, Pd, Ne, Nd
@@ -102,18 +104,11 @@ def move(alvo):
     ajuste = pid_control(erro, delta_time)
     ev3.screen.print("X: ",X[-1])
     ev3.screen.print("Y: ",Y[-1])
-    left_motor.run(300+ajuste)
-    right_motor.run(300-ajuste)
-
-
-
-    #print("X: ",X[-1])
-    #print("Y: ",Y[-1])
-    #print("teta: ",teta[-1], "\n")
+    robot.drive(150, ajuste)
 
 def L():
   
-  ev3.speaker.beep()  # Emite um som para indicar o início do programa
+  ev3.speaker.beep() 
   move(1000)
   robot.stop()
 
