@@ -5,6 +5,8 @@ from pybricks.parameters import Port  # Importa a classe Port do módulo pybrick
 from pybricks.robotics import DriveBase  # Importa a classe DriveBase do módulo pybricks.robotics
 import math  # Importa o módulo math para operações matemáticas
 import time
+import _thread
+import json
 
 ev3 = EV3Brick()  # Cria uma instância da classe EV3Brick para interagir com o bloco EV3
 
@@ -19,29 +21,108 @@ entre_eixos = 143 # Distância entre as rodas em milímetros
 robot = DriveBase(left_motor, right_motor, wheel_diameter=wheel_diameter, axle_track=entre_eixos)
 
 raio = wheel_diameter/2
-start = time.time()
-velocidades_direita = [{'rpm': 0, 'time': 0}]
-velocidades_esquerda = [{'rpm': 0, 'time': 0}]
-while True:
-    right_motor.run(600)
-    left_motor.run(600)
-#   salva num array o RPM de cada roda e o tempo de medição
-    velocidades_direita.append({'rpm': right_motor.speed(), 'time': time.time() - start})
-    velocidades_esquerda.append({'rpm': left_motor.speed(), 'time': time.time() - start})
-    print(velocidades_direita[-1]['rpm'], velocidades_esquerda[-1]['rpm'])
-    if time.time() - start > 5:
-        break
+
+Nd = 0 #pulsos roda direita
+Ne = 0 #pulsos roda esquerda
+Pd = 0 #total de pulsos roda direita
+Pe = 0 #total de pulsos roda esquerda.
+X = []
+Y= []
+teta = []
+tempos = []
+
+Kp = 3  # Ganho proporcional
+Ki = 0.1  # Ganho integral
+Kd = 0.2  # Ganho derivativo
+
+# Variáveis para armazenar valores anteriores e somas do erro para o cálculo integral
+integral = 0
+ultimo_erro = 0
+setpoint = 0 
+
+dados_Odo = [{'X': 0, 'Y': 0, 'teta': 0, 'tempo': 0}]
+setpoint = 0
+
+
+
+def pid_control(erro, delta_time):
+  global integral, ultimo_erro
+
+  # Componente proporcional
+  proporcional = Kp * erro
+
+  # Componente integral
+  integral += erro * delta_time
+  integral = max(min(integral, 100), -100)  # Prevenir o acúmulo excessivo do integral (windup)
+  integrativo = Ki * integral
+
+  # Componente derivativo
+  derivativo = Kd * (erro - ultimo_erro) / delta_time
+
+  # Atualiza o erro anterior para a próxima iteração
+  ultimo_erro = erro
+
+  # Saída do PID
+  output = proporcional + integrativo + derivativo
+  return output
+
+
+def thread_calculo():
+  global Pe, Pd, Ne, Nd
+  start = time.time()
+  while robot.distance() < 1000:
+    
+    Pe = Pe + Ne #Calcula total de rotações da roda esquerda
+    Pd = Pd + Nd #Calcula total de rotações da roda direita
+    Ne = left_motor.angle() - Pe #calcula a última rotação da roda esquerda
+    Nd = right_motor.angle() - Pd #calcula a última rotação da roda direita
+    teta.append(teta[-1] + (2*math.pi * ((Ne * raio) - (Nd * raio))/(360*entre_eixos))) #cálculo de teta
+    X.append(X[-1] + (math.pi * ((Ne * raio) + (Nd * raio))/360  * math.cos(teta[-1]))) #cálculo de X
+    Y.append(Y[-1] + (math.pi * ((Ne * raio) + (Nd * raio))/360  * math.sin(teta[-1]))) #cálculo de Y\
+    dados_Odo.append({'X': X[-1], 'Y': Y[-1], 'teta': teta[-1], 'tempo': time.time() - start})
+    ev3.screen.print("X: ",X[-1])
+    ev3.screen.print("Y: ",Y[-1])
+    last_teta = "{:.3f}".format(teta[-1])
+    ev3.screen.print("teta: ",last_teta)
+
+teta.append(0)
+X.append(0)
+Y.append(0)
+def move(alvo):
+  robot.reset()
+  cont = 0
+  ultimo_tempo = time.time()
+  global Pe, Pd, Ne, Nd
+  _thread.start_new_thread(thread_calculo, ())
+  while robot.distance() < alvo:
+    erro = setpoint - teta[-1]
+    time_now = time.time()
+    delta_time = time_now - ultimo_tempo
+    ultimo_tempo = time_now
+    ajuste = pid_control(erro, delta_time)
+    ev3.screen.print("X: ",X[-1])
+    ev3.screen.print("Y: ",Y[-1])
+    left_motor.run(300+ajuste)
+    right_motor.run(300-ajuste)
+
+
+
+    #print("X: ",X[-1])
+    #print("Y: ",Y[-1])
+    #print("teta: ",teta[-1], "\n")
+
+def L():
+  
+  ev3.speaker.beep()  # Emite um som para indicar o início do programa
+  move(1000)
+  robot.stop()
+
+
+
+L()
+with open('dadosOdo.txt', 'w') as f:
+    for item in dados_Odo:
+        f.write(json.dumps(item) + '\n')
+
+ev3.speaker.beep()  # Emite um som para indicar o final do movimento para frente
 robot.stop()
-
-# salva num arquivo os dados de RPM e tempo de medição
-
-with open('velocidades_direita_directly_call.txt', 'w') as f:
-    for item in velocidades_direita:
-        f.write("%s\n" % item)
-
-with open('velocidades_esquerda_directly_call.txt', 'w') as f:
-    for item in velocidades_esquerda:
-        f.write("%s\n" % item)
-
-
-

@@ -5,6 +5,7 @@ from pybricks.parameters import Port  # Importa a classe Port do módulo pybrick
 from pybricks.robotics import DriveBase  # Importa a classe DriveBase do módulo pybricks.robotics
 import math  # Importa o módulo math para operações matemáticas
 import time
+import json
 
 ev3 = EV3Brick()  # Cria uma instância da classe EV3Brick para interagir com o bloco EV3
 
@@ -22,8 +23,8 @@ raio = wheel_diameter/2
 start = time.time()
 velocidades_direita = [{'rpm': 0, 'time': 0}]
 velocidades_esquerda = [{'rpm': 0, 'time': 0}]
-Ts = 600
-Kp = 1800  # Constante Proporcional
+Ts = 300
+Kp = 3  # Constante Proporcional
 Ki = 0  # Constante Integral
 Kd = 0  # Constante Derivativa
 
@@ -36,26 +37,23 @@ soma_erros_esquerda = 0
 erro_anterior_direita = 0
 erro_anterior_esquerda = 0
 while True:
-    erro_direita = Ts - right_motor.speed()
-    erro_esquerda = Ts - left_motor.speed()
-    P_direita = Kp * erro_direita
-    P_esquerda = Kp * erro_esquerda
-    soma_erros_direita += erro_direita
-    soma_erros_esquerda += erro_esquerda
-    
-    I_direita = Ki * soma_erros_direita
-    I_esquerda = Ki * soma_erros_esquerda
+    erro = Ts - (right_motor.speed() + left_motor.speed())/2
 
-    D_direita = Kd * (erro_direita - erro_anterior_direita)
-    D_esquerda = Kd * (erro_esquerda - erro_anterior_esquerda)
+    P = Kp * erro
+  
+    soma_erros += erro
     
-    erro_anterior_direita = erro_direita
-    erro_anterior_esquerda = erro_esquerda
-    controle_direita = P_direita + I_direita + D_direita
-    controle_esquerda = P_esquerda + I_esquerda + D_esquerda
+    I = Ki * soma_erros
+ 
+
+    D = Kd * (erro - erro_anterior)
+
     
-    right_motor.run(Ts + controle_direita)
-    left_motor.run(Ts + controle_esquerda)
+    erro_anterior = erro
+    controle = P+ I + D
+    
+    right_motor.run(Ts + controle)
+    left_motor.run(Ts - controle)
 
 
 #   salva num array o RPM de cada roda e o tempo de medição
@@ -70,11 +68,11 @@ robot.stop()
 
 with open('velocidades_direita_P.txt', 'w') as f:
     for item in velocidades_direita:
-        f.write("%s\n" % item)
+        f.write(json.dumps(item) + '\n')
 
 with open('velocidades_esquerda_P.txt', 'w') as f:
     for item in velocidades_esquerda:
-        f.write("%s\n" % item)
+        f.write(json.dumps(item) + '\n')
 
 
 

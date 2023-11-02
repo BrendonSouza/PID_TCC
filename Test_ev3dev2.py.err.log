@@ -1,0 +1,12 @@
+Traceback (most recent call last):
+  File "/home/robot/PID_TCC/Test_ev3dev2.py", line 46, in <module>
+    motor_left.run_forever(speed_sp=setpoint + output_left)
+  File "/usr/lib/python3/dist-packages/ev3dev/core.py", line 799, in run_forever
+    setattr(self, key, kwargs[key])
+  File "/usr/lib/python3/dist-packages/ev3dev/core.py", line 589, in speed_sp
+    self._speed_sp = self.set_attr_int(self._speed_sp, 'speed_sp', value)
+  File "/usr/lib/python3/dist-packages/ev3dev/core.py", line 223, in set_attr_int
+    return self._set_attribute(attribute, name, str(int(value)))
+  File "/usr/lib/python3/dist-packages/ev3dev/core.py", line 211, in _set_attribute
+    attribute.write(value.encode())
+OSError: [Errno 22] Invalid argument

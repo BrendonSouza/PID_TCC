@@ -1,0 +1,12 @@
+Traceback (most recent call last):
+  File "/home/robot/PID_TCC/main.py", line 78, in <module>
+  File "/home/robot/PID_TCC/main.py", line 73, in L
+  File "/home/robot/PID_TCC/main.py", line 57, in move
+OSError: [Errno 1] EPERM: 
+
+The requested operation is not valid in the current state:
+--> Check the documentation to for required conditions.
+--> Check the line in your script that matches
+    the line number given in the 'Traceback' above.
+
+
